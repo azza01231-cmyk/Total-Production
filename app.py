@@ -82,4 +82,4 @@ if uploaded_file:
             wells_df.style.format({
                 "TOTAL PRODUCTION": "{:,.0f}",
                 "NET DIFF": "{:+.0f}",
-                "W/C": "{}"
+                "W/C": "{}")
