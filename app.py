@@ -5,25 +5,29 @@ st.set_page_config(page_title="Production Report Summary", layout="wide")
 
 st.title("🛢️ Production Report Summary")
 
-# Upload Excel file
 uploaded_file = st.file_uploader("Upload the Excel Report (.xlsm)", type=["xlsm", "xlsx"])
 
 if uploaded_file:
     try:
-        # Read 'Report' sheet
+        # Read the 'Report' sheet
         df = pd.read_excel(uploaded_file, sheet_name="Report")
 
-        # Clean columns (remove spaces, etc.)
+        # Clean up column names (strip spaces)
         df.columns = df.columns.str.strip()
 
-        # Filter wells that have Net Diff. BO in Total Production
+        # Print columns for debugging
+        st.write("Detected columns:", list(df.columns))
+
+        # Select relevant columns from your provided image
         wells_df = df[[
-            "Well Name",
-            "TOTAL PRODUCTION",
-            "PRODUCTION Zone",
-            "NET DIFF",
-            "W/C"
-        ]].dropna(subset=["TOTAL PRODUCTION"])
+            "RUNNING WELLS",
+            "TOTAL PRODUCTION.1",   # Net BO
+            "TOTAL PRODUCTION.2",   # Net diff. BO
+            "W/C",                  # W/C %
+        ]].copy()
+
+        # Rename for clarity
+        wells_df.columns = ["Well Name", "TOTAL PRODUCTION", "NET DIFF", "W/C"]
 
         # Convert numeric columns
         wells_df["TOTAL PRODUCTION"] = pd.to_numeric(wells_df["TOTAL PRODUCTION"], errors="coerce")
@@ -33,18 +37,17 @@ if uploaded_file:
         total_production = wells_df["TOTAL PRODUCTION"].sum()
         total_net_diff = wells_df["NET DIFF"].sum()
 
-        # Add totals row
+        # Add total row
         total_row = pd.DataFrame({
             "Well Name": ["TOTAL"],
             "TOTAL PRODUCTION": [total_production],
-            "PRODUCTION Zone": [""],
             "NET DIFF": [total_net_diff],
             "W/C": [""]
         })
 
         wells_df = pd.concat([wells_df, total_row], ignore_index=True)
 
-        # Display the table
+        # Display table
         st.dataframe(
             wells_df.style.format({
                 "TOTAL PRODUCTION": "{:,.0f}",
