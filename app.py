@@ -3,35 +3,52 @@ import pandas as pd
 
 st.set_page_config(page_title="Production Report Summary", layout="wide")
 
-st.title("🛢️ Production Report Summary")
+st.title("🛢️ NORPETCO Production Report Summary")
 
-uploaded_file = st.file_uploader("Upload the Excel Report (.xlsm)", type=["xlsm", "xlsx"])
+# File uploader
+uploaded_file = st.file_uploader("📂 Upload the Excel Report (.xlsm or .xlsx)", type=["xlsm", "xlsx"])
 
 if uploaded_file:
     try:
-        # Read the 'Report' sheet
-        df = pd.read_excel(uploaded_file, sheet_name="Report")
+        # Read the Excel "Report" sheet
+        df = pd.read_excel(uploaded_file, sheet_name="Report", header=0)
 
-        # Clean up column names (strip spaces)
-        df.columns = df.columns.str.strip()
+        # Clean column names
+        df.columns = df.columns.astype(str).str.strip()
 
-        # Print columns for debugging
-        st.write("Detected columns:", list(df.columns))
+        # Show columns for verification
+        st.write("🧩 Detected columns in Excel:", list(df.columns))
 
-        # Select relevant columns from your provided image
-        wells_df = df[[
-            "RUNNING WELLS",
-            "TOTAL PRODUCTION.1",   # Net BO
-            "TOTAL PRODUCTION.2",   # Net diff. BO
-            "W/C",                  # W/C %
-        ]].copy()
+        # Try to automatically find matching column names
+        well_col = next((c for c in df.columns if "running" in c.lower()), None)
+        net_bo_col = next((c for c in df.columns if "net" in c.lower() and "bo" in c.lower()), None)
+        net_diff_col = next((c for c in df.columns if "net" in c.lower() and "diff" in c.lower()), None)
+        wc_col = next((c for c in df.columns if "w/c" in c.lower() or "wc" in c.lower()), None)
+        zone_col = next((c for c in df.columns if "zone" in c.lower()), None)
 
-        # Rename for clarity
-        wells_df.columns = ["Well Name", "TOTAL PRODUCTION", "NET DIFF", "W/C"]
+        # Check columns
+        st.write("✅ Matched columns:", {
+            "Well Name": well_col,
+            "Production Zone": zone_col,
+            "Net BO": net_bo_col,
+            "Net Diff BO": net_diff_col,
+            "W/C": wc_col
+        })
 
-        # Convert numeric columns
+        if not all([well_col, net_bo_col, net_diff_col, wc_col]):
+            st.error("❌ Could not automatically detect required columns. Please check your Excel header names.")
+            st.stop()
+
+        # Select and rename columns
+        wells_df = df[[well_col, zone_col, net_bo_col, net_diff_col, wc_col]].copy()
+        wells_df.columns = ["Well Name", "Production Zone", "TOTAL PRODUCTION", "NET DIFF", "W/C"]
+
+        # Convert to numeric
         wells_df["TOTAL PRODUCTION"] = pd.to_numeric(wells_df["TOTAL PRODUCTION"], errors="coerce")
         wells_df["NET DIFF"] = pd.to_numeric(wells_df["NET DIFF"], errors="coerce")
+
+        # Remove blank rows
+        wells_df = wells_df.dropna(subset=["Well Name", "TOTAL PRODUCTION"], how="any")
 
         # Compute totals
         total_production = wells_df["TOTAL PRODUCTION"].sum()
@@ -40,14 +57,14 @@ if uploaded_file:
         # Add total row
         total_row = pd.DataFrame({
             "Well Name": ["TOTAL"],
+            "Production Zone": [""],
             "TOTAL PRODUCTION": [total_production],
             "NET DIFF": [total_net_diff],
             "W/C": [""]
         })
-
         wells_df = pd.concat([wells_df, total_row], ignore_index=True)
 
-        # Display table
+        # Display styled table
         st.dataframe(
             wells_df.style.format({
                 "TOTAL PRODUCTION": "{:,.0f}",
@@ -60,6 +77,7 @@ if uploaded_file:
         st.success("✅ Table generated successfully!")
 
     except Exception as e:
-        st.error(f"Error reading Excel file: {e}")
+        st.error(f"⚠️ Error reading Excel file: {e}")
+
 else:
-    st.info("📂 Please upload the production Excel file to continue.")
+    st.info("📥 Please upload your Excel production report to continue.")
