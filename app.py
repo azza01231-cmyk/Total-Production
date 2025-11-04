@@ -82,4 +82,15 @@ if uploaded_file:
             wells_df.style.format({
                 "TOTAL PRODUCTION": "{:,.0f}",
                 "NET DIFF": "{:+.0f}",
-                "W/C": "{}"}))
+                "W/C": "{}"
+            }),
+            use_container_width=True
+        )
+
+        st.success("✅ Table extracted and summarized successfully!")
+
+    except Exception as e:
+        st.error(f"⚠️ Error reading Excel file: {e}")
+
+else:
+    st.info("📥 Please upload your Excel production report to continue.")
